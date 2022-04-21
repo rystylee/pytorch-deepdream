@@ -29,6 +29,7 @@ class SupportedModels(enum.Enum):
     GOOGLENET = 2
     RESNET50 = 3
     ALEXNET = 4
+    RESNET50_EXPERIMENTAL = 5
 
 
 class SupportedPretrainedWeights(enum.Enum):

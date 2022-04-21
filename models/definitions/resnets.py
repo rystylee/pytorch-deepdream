@@ -151,3 +151,69 @@ class ResNet50(torch.nn.Module):
         out = net_outputs(layer10, layer23, layer35, layer40)
         # layer35 is my favourite
         return out
+
+
+class ResNet50Experimental(torch.nn.Module):
+    """Only those layers are exposed which have already proven to work nicely."""
+
+    def __init__(self, pretrained_weights, requires_grad=False, show_progress=False):
+        super().__init__()
+        if pretrained_weights == SupportedPretrainedWeights.IMAGENET.name:
+            resnet50 = models.resnet50(pretrained=True, progress=show_progress).eval()
+        elif pretrained_weights == SupportedPretrainedWeights.PLACES_365.name:
+            resnet50 = models.resnet50(pretrained=False, progress=show_progress).eval()
+
+            binary_name = 'resnet50_places365.pth.tar'
+            resnet50_places365_binary_path = os.path.join(BINARIES_PATH, binary_name)
+
+            if os.path.exists(resnet50_places365_binary_path):
+                state_dict = torch.load(resnet50_places365_binary_path)['state_dict']
+            else:
+                binary_url = r'http://places2.csail.mit.edu/models_places365/resnet50_places365.pth.tar'
+                print(f'Downloading {binary_name} from {binary_url} it may take some time.')
+                download_url_to_file(binary_url, resnet50_places365_binary_path)
+                print('Done downloading.')
+                state_dict = torch.load(resnet50_places365_binary_path)['state_dict']
+
+            new_state_dict = {}  # modify key names and make it compatible with current PyTorch model naming scheme
+            for old_key in state_dict.keys():
+                new_key = old_key[7:]
+                new_state_dict[new_key] = state_dict[old_key]
+
+            resnet50.fc = torch.nn.Linear(resnet50.fc.in_features, 365)
+            resnet50.load_state_dict(new_state_dict, strict=True)
+        else:
+            raise Exception(f'Pretrained weights {pretrained_weights} not yet supported for {self.__class__.__name__} model.')
+
+        # original resnet50
+        self.resnet50 = resnet50
+
+        # masking for particular class
+        # ---------------------------------------------
+        # For Place365
+        # id list: https://github.com/zhoubolei/places_devkit/blob/master/categories_places365.txt
+        # ---------------------------------------------
+        # mask_ls = [1 if i in [150, 151, 152] else 0 for i in range(365)]  # ['broadleaf'. 'forest_path', 'forest_road']
+        mask_ls = [1 if i in [150] else 0 for i in range(365)]  # ['broadleaf']
+        # mask_ls = [1 if i in [152] else 0 for i in range(365)]  # ['forest_road']
+        # ---------------------------------------------
+        # For ImageNet
+        # id list: https://deeplearning.cms.waikato.ac.nz/user-guide/class-maps/IMAGENET/
+        # ---------------------------------------------
+        # mask_ls = [1 if i in [254] else 0 for i in range(1000)]
+
+        self.mask = torch.tensor(mask_ls).float().unsqueeze(0)
+
+        self.layer_names = ['layer1', 'layer2', 'layer3', 'layer4']
+
+        # Set these to False so that PyTorch won't be including them in it's autograd engine - eating up precious memory
+        if not requires_grad:
+            for param in self.resnet50.parameters():
+                param.requires_grad = False
+
+    # Feel free to experiment with different layers
+    def forward(self, x):
+        x = self.resnet50(x)
+        x = x * self.mask.to(x.device)
+        # print(x)
+        return x

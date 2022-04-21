@@ -13,7 +13,7 @@ import scipy.ndimage as nd
 
 from models.definitions.vggs import Vgg16, Vgg16Experimental
 from models.definitions.googlenet import GoogLeNet
-from models.definitions.resnets import ResNet50
+from models.definitions.resnets import ResNet50, ResNet50Experimental
 from models.definitions.alexnet import AlexNet
 from .constants import *
 
@@ -132,6 +132,8 @@ def fetch_and_prepare_model(model_type, pretrained_weights, device):
         model = ResNet50(pretrained_weights, requires_grad=False, show_progress=True).to(device)
     elif model_type == SupportedModels.ALEXNET.name:
         model = AlexNet(pretrained_weights, requires_grad=False, show_progress=True).to(device)
+    elif model_type == SupportedModels.RESNET50_EXPERIMENTAL.name:
+        model = ResNet50Experimental(pretrained_weights, requires_grad=False, show_progress=True).to(device)
     else:
         raise Exception('Model not yet supported.')
     return model

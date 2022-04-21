@@ -27,7 +27,10 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     out = model(input_tensor)
 
     # Step 1: Grab activations/feature maps of interest
-    activations = [out[layer_id_to_use] for layer_id_to_use in layer_ids_to_use]
+    if config['model_name'] == SupportedModels.RESNET50_EXPERIMENTAL.name:
+        activations = [out]
+    else:
+        activations = [out[layer_id_to_use] for layer_id_to_use in layer_ids_to_use]
 
     # Step 2: Calculate loss over activations
     losses = []

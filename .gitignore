@@ -15,3 +15,5 @@ models/binaries
 *.jpg
 *.png
 *.psd
+
+venv/
